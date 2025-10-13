@@ -51,104 +51,41 @@
             <p>Current Bewb Holder</p>
         </div>
 
-        
+        {% if top_5|length > 0 %}
         <div class="champion">
             <h2>🥇 Current Leader</h2>
-            <div class="team-name">👑 (B2Bsbc) Soft Plopping Sounds</div>
-            <div class="points">140.54</div>
-            <div class="week">Week 5</div>
+            <div class="team-name">👑 {{ top_5[0].team_name }}</div>
+            <div class="points">{{ '%.2f' % top_5[0].points }}</div>
+            <div class="week">Week {{ top_5[0].week }}</div>
         </div>
-        
+        {% endif %}
 
         <div class="top-4">
             <h3 style="color: #2E7D32; margin-bottom: 20px; text-align: center;">🏆 Top 4 Runners-Up</h3>
-            
+            {% for entry in top_5[1:] %}
             <div class="score-item">
-                <div class="rank">2</div>
+                <div class="rank">{{ loop.index + 1 }}</div>
                 <div class="team-info">
-                    <div class="team-name">Groper Cleveland</div>
-                    <div class="week">Week 5</div>
+                    <div class="team-name">{{ entry.team_name }}</div>
+                    <div class="week">Week {{ entry.week }}</div>
                 </div>
-                <div class="points">133.08</div>
+                <div class="points">{{ '%.2f' % entry.points }}</div>
             </div>
-            
-            <div class="score-item">
-                <div class="rank">3</div>
-                <div class="team-info">
-                    <div class="team-name">SLAP</div>
-                    <div class="week">Week 5</div>
-                </div>
-                <div class="points">133.04</div>
-            </div>
-            
-            <div class="score-item">
-                <div class="rank">4</div>
-                <div class="team-info">
-                    <div class="team-name">Surely you're joking</div>
-                    <div class="week">Week 4</div>
-                </div>
-                <div class="points">132.84</div>
-            </div>
-            
-            <div class="score-item">
-                <div class="rank">5</div>
-                <div class="team-info">
-                    <div class="team-name">Puka-Boo I See You</div>
-                    <div class="week">Week 4</div>
-                </div>
-                <div class="points">120.08</div>
-            </div>
-            
+            {% endfor %}
         </div>
 
         <div class="worst-section">
             <h3 class="worst-title">💩 5 Worst Scores (Completed Weeks Only)</h3>
-            
+            {% for entry in worst_5 %}
             <div class="worst-item">
-                <div class="worst-rank">1</div>
+                <div class="worst-rank">{{ loop.index }}</div>
                 <div class="worst-team-info">
-                    <div class="worst-team-name">hey everybodys</div>
-                    <div class="worst-week">Week 1</div>
+                    <div class="worst-team-name">{{ entry.team_name }}</div>
+                    <div class="worst-week">Week {{ entry.week }}</div>
                 </div>
-                <div class="worst-points">56.72</div>
+                <div class="worst-points">{{ '%.2f' % entry.points }}</div>
             </div>
-            
-            <div class="worst-item">
-                <div class="worst-rank">2</div>
-                <div class="worst-team-info">
-                    <div class="worst-team-name">Picasso Titties</div>
-                    <div class="worst-week">Week 1</div>
-                </div>
-                <div class="worst-points">62.67</div>
-            </div>
-            
-            <div class="worst-item">
-                <div class="worst-rank">3</div>
-                <div class="worst-team-info">
-                    <div class="worst-team-name">The Griese Sacks</div>
-                    <div class="worst-week">Week 3</div>
-                </div>
-                <div class="worst-points">64.56</div>
-            </div>
-            
-            <div class="worst-item">
-                <div class="worst-rank">4</div>
-                <div class="worst-team-info">
-                    <div class="worst-team-name">Surely you're joking</div>
-                    <div class="worst-week">Week 2</div>
-                </div>
-                <div class="worst-points">65.48</div>
-            </div>
-            
-            <div class="worst-item">
-                <div class="worst-rank">5</div>
-                <div class="worst-team-info">
-                    <div class="worst-team-name">(B2Bsbc) Soft Plopping Sounds</div>
-                    <div class="worst-week">Week 2</div>
-                </div>
-                <div class="worst-points">65.92</div>
-            </div>
-            
+            {% endfor %}
         </div>
 
         <div class="footer">
@@ -157,3 +94,4 @@
     </div>
 </body>
 </html>
+

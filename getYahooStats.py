@@ -1,9 +1,23 @@
 import requests
 import json
 import os
+import math
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # from yahooToken import YAHOO_TOKEN
 
+def detemrine_last_completed_week(season_start: datetime):
+    """
+    given the season start date return the last completed week of nfl football.
+    weeks end after mnday night football is completed.
+    """
+    delta = datetime.now() - season_start
+
+    last_completed_week = math.floor(delta.days/7)
+
+    return last_completed_week
 
 def get_teams_response(token, league_id):
     url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/{league_id}/teams;out=stats?format=json"
@@ -146,13 +160,21 @@ def get_team_weekly_score(token, team_id, league_id, week):
 # make request to get a list of all teams
 # https://fantasysports.yahooapis.com/fantasy/v2/league/{{curr_league_id}}/teams;out=stats?format=json
 
-# TOKEN = os.getenv("YAHOO_TOKEN")
+# Get token from environment variable
 YAHOO_TOKEN = os.getenv("YAHOO_TOKEN")
+SEASON_START = datetime(2025, 9, 3, 2)
+
+if not YAHOO_TOKEN:
+    print("Error: YAHOO_TOKEN environment variable not set!")
+    print("Please set your Yahoo API token as an environment variable:")
+    print("export YAHOO_TOKEN='your_token_here'")
+    exit(1)
+
 league_id = "461.l.632073"
 teams_response = get_teams_response(YAHOO_TOKEN, league_id)
 teams_and_names = parse_team_names_and_ids(teams_response)
-# print(teams_and_names)
 
+last_completed_week = detemrine_last_completed_week(SEASON_START)
 
 # teams_scores = [s
 #     ["team_id", "team_name", "week", "point"]
@@ -160,7 +182,8 @@ teams_and_names = parse_team_names_and_ids(teams_response)
 teams_scores = []
 # Example: Get weekly stats for the first team
 for team in teams_and_names:
-    for week in range(1, 18):
+    for week in range(1, last_completed_week + 1):
+        print(f'looking at week {week}')
         teams_response_for_week = get_teams_response_for_week(
             YAHOO_TOKEN, team[0], league_id, week
         )
@@ -172,214 +195,50 @@ for team in teams_and_names:
 teams_scores_sorted = sorted(teams_scores, key=lambda x: x[3], reverse=True)
 
 
-def generate_html_report(teams_scores_sorted):
-    """Generate HTML file with top 5 scores, featuring prominent top score."""
-    top_5 = teams_scores_sorted[:5]
+def generate_html_report(teams_scores_sorted, teams_response):
+    """Render HTML using Jinja2 template with top 5 and worst 5 (completed weeks)."""
+    # Determine current week from league response if available; fallback to max week in data
+    current_week = None
+    try:
+        league_meta = teams_response["fantasy_content"]["league"][0]
+        if isinstance(league_meta, dict) and "current_week" in league_meta:
+            current_week = int(league_meta["current_week"])  # may be str
+    except Exception:
+        current_week = None
 
-    html = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 What's the Side Bewb At?</title>
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
+    if current_week is None:
+        try:
+            current_week = max(week for _, _, week, _ in teams_scores_sorted)
+        except ValueError:
+            current_week = 1
 
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 50%, #8BC34A 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }}
+    # Build top 5 list of dicts
+    top_5_raw = teams_scores_sorted[:5]
+    top_5 = [
+        {"team_id": t[0], "team_name": t[1], "week": t[2], "points": float(t[3])}
+        for t in top_5_raw
+    ]
 
-        .container {{
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }}
+    # Completed weeks only for worst 5
+    completed_scores = [s for s in teams_scores_sorted if s[2] <= current_week]
+    worst_5_raw = sorted(completed_scores, key=lambda x: x[3])[:5]
+    worst_5 = [
+        {"team_id": t[0], "team_name": t[1], "week": t[2], "points": float(t[3])}
+        for t in worst_5_raw
+    ]
 
-        .header {{
-            background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
-            color: white;
-            text-align: center;
-            padding: 40px 20px;
-        }}
+    env = Environment(
+        loader=FileSystemLoader("templates"),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    template = env.get_template("index.html.j2")
+    html = template.render(top_5=top_5, worst_5=worst_5)
 
-        .header h1 {{
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }}
-
-        .header p {{
-            font-size: 1.2em;
-            opacity: 0.9;
-        }}
-
-        .champion {{
-            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
-            margin: 20px;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(255,215,0,0.3);
-            border: 3px solid #FFC107;
-        }}
-
-        .champion h2 {{
-            color: #E65100;
-            font-size: 2em;
-            margin-bottom: 10px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }}
-
-        .champion .team-name {{
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #1B5E20;
-            margin-bottom: 5px;
-        }}
-
-        .champion .points {{
-            font-size: 3em;
-            font-weight: bold;
-            color: #D84315;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }}
-
-        .champion .week {{
-            background: #E65100;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-top: 10px;
-            font-weight: bold;
-        }}
-
-        .top-4 {{
-            padding: 20px;
-        }}
-
-        .score-item {{
-            background: #f8f9fa;
-            margin: 15px 0;
-            padding: 20px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }}
-
-        .score-item:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }}
-
-        .rank {{
-            background: #4CAF50;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.2em;
-        }}
-
-        .team-info {{
-            flex-grow: 1;
-            margin-left: 20px;
-        }}
-
-        .team-name {{
-            font-weight: bold;
-            color: #2E7D32;
-            font-size: 1.2em;
-        }}
-
-        .week {{
-            background: #81C784;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 0.9em;
-            display: inline-block;
-            margin-top: 5px;
-        }}
-
-        .points {{
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #1B5E20;
-        }}
-
-        .footer {{
-            background: #E8F5E8;
-            text-align: center;
-            padding: 20px;
-            color: #2E7D32;
-            font-style: italic;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏆 Top 5 Scores</h1>
-            <p>Current Bewb Holder</p>
-        </div>
-
-        <div class="champion">
-            <h2>🥇 Current Leader</h2>
-            <div class="team-name">{top_5[0][1]}</div>
-            <div class="points">{top_5[0][3]:.2f}</div>
-            <div class="week">Week {top_5[0][2]}</div>
-        </div>
-
-        <div class="top-4">
-            <h3 style="color: #2E7D32; margin-bottom: 20px; text-align: center;">🏆 Top 4 Runners-Up</h3>
-"""
-
-    for i, score in enumerate(top_5[1:], 2):
-        team_id, team_name, week, points = score
-        html += f"""
-            <div class="score-item">
-                <div class="rank">{i}</div>
-                <div class="team-info">
-                    <div class="team-name">{team_name}</div>
-                    <div class="week">Week {week}</div>
-                </div>
-                <div class="points">{points:.2f}</div>
-            </div>"""
-
-    html += """
-        </div>
-
-        <div class="footer">
-            <p>🏈 Generated with Fantasy Football Data</p>
-        </div>
-    </div>
-</body>
-</html>"""
-
-    with open("index.html", "w") as f:
+    with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
 
     print("HTML report generated: index.html")
 
 
 # Generate the HTML report
-generate_html_report(teams_scores_sorted)
+generate_html_report(teams_scores_sorted, teams_response)
