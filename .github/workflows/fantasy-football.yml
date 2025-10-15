@@ -1,12 +1,36 @@
 name: Fantasy Football Stats Update
 
 on:
-  schedule:
+  # schedule:
     # Run every Monday at 9 AM UTC (adjust timezone as needed)
     # - cron: '0 9 * * 1'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
+  update_secret:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: get new token
+      run: |
+        curl -X POST "https://api.login.yahoo.com/oauth2/get_token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "client_id=${{ secrets.YAHOO_CLIENT_ID}}&client_secret=${{ secrets.YAHOO_CLIENT_SECRET}}&redirect_uri=oob&code=${{ secrets.REFRESH_TOKEN }}&grant_type=refresh_token" > response.json
+        cat response.json
+        NEW_TOKEN=$(jq -r '.access_token' response.json)
+        echo "NEW_TOKEN=$NEW_TOKEN" >> $GITHUB_ENV
+
+    - name: Update Secret
+      uses: punitkashyup/update-secret-action@v1
+      with:
+        repository_owner: ${{ secrets.REPOSITORY_OWNER }}
+        repository_name: ${{ secrets.REPOSITORY_NAME }}
+        secret_name: ${{ secrets.SECRET_NAME }}
+        new_secret_value: ${{ env.NEW_TOKEN }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
   update-stats:
     runs-on: ubuntu-latest
     
