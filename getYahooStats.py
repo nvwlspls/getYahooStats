@@ -162,7 +162,7 @@ def get_team_weekly_score(token, team_id, league_id, week):
 
 # Get token from environment variable
 YAHOO_TOKEN = os.getenv("YAHOO_TOKEN")
-SEASON_START = datetime(2025, 9, 3, 2)
+SEASON_START = datetime(2025, 9, 2, 2)
 
 if not YAHOO_TOKEN:
     print("Error: YAHOO_TOKEN environment variable not set!")
@@ -175,7 +175,7 @@ teams_response = get_teams_response(YAHOO_TOKEN, league_id)
 teams_and_names = parse_team_names_and_ids(teams_response)
 
 last_completed_week = detemrine_last_completed_week(SEASON_START)
-
+print(f'Last completed week is {last_completed_week}')
 # teams_scores = [s
 #     ["team_id", "team_name", "week", "point"]
 # ]
@@ -183,7 +183,6 @@ teams_scores = []
 # Example: Get weekly stats for the first team
 for team in teams_and_names:
     for week in range(1, last_completed_week + 1):
-        print(f'looking at week {week}')
         teams_response_for_week = get_teams_response_for_week(
             YAHOO_TOKEN, team[0], league_id, week
         )
