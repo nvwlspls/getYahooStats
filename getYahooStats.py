@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-# from yahooToken import YAHOO_TOKEN
-
 def detemrine_last_completed_week(season_start: datetime):
     """
     given the season start date return the last completed week of nfl football.
@@ -175,6 +173,7 @@ teams_response = get_teams_response(YAHOO_TOKEN, league_id)
 teams_and_names = parse_team_names_and_ids(teams_response)
 
 last_completed_week = detemrine_last_completed_week(SEASON_START)
+#last_completed_week = 7
 print(f'Last completed week is {last_completed_week}')
 # teams_scores = [s
 #     ["team_id", "team_name", "week", "point"]
